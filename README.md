@@ -26,6 +26,6 @@ This repo contains R scripts for the paper named Estimating dementia incidence i
 
 Auxiliary scripts include: 
 
-* `functions_summary.R` contains functions called in 2_table1.R. 
+* `functions_summary.R` contains functions called in `table1.R`. 
 * `function_IR_calc.R` contains helper functions for IR calculation. 
 
