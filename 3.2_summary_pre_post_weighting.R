@@ -1,6 +1,6 @@
 # generate figures and tables for manuscript: 
 # (1) covariate balance plots by ethnicity before and after applying weight
-
+# (2) summary statistics for propensity scores and weights
 
 # set up packages ----
 if (!require("pacman")) 
