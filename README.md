@@ -20,7 +20,7 @@ This repo contains R scripts for the paper named Estimating dementia incidence i
 * `4.1_bootstrap_IR_prep.R` prepares the dataset for IR calculation. 
 * `4.2_bootstrap_IR.R` sets up the IR calculation to be run on the Hoffman2 cluster. 
 * `4.3_submission_script.sh` is the job submission script on the cluster. 
-* `4.4_bootstrap_processing.R` cleans the output. 
+* `4.4_bootstrap_processing.R` cleans the output and prepares tables and figures. 
 
 5. `sensitivity_age_in_weighting_models.R` contains sensitivity analysis on how to include age in the GLM weighting model. 
 
