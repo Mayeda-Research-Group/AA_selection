@@ -163,6 +163,7 @@ for (i in imp_start:imp_end) {
       data = input_data,
       statistic = ir_boot,
       R = 1100,
+      strata = input_data$in_rpgeh, # added on Mar 23 for stratified resampling
       formula = fmls[ethn]
     )
     

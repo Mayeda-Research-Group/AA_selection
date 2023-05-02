@@ -89,30 +89,39 @@ chis_combined <- tbl_svysummary(
   data = svy.d, 
   by = H_ethn, 
   statistic = list(all_continuous() ~ "{mean} ({sd})", 
-                   all_categorical() ~ "{n_unweighted} ({p})"), 
+                   # all_categorical() ~ "{n_unweighted} ({p})"
+                   all_categorical() ~ "{p}"
+                   ), 
   missing_text = "Missing", 
   digits = list(H_age ~ 1, H_bmi ~ 1, H_income_pp ~ 0, 
-                all_categorical() ~ c(0, 1))
+                all_categorical() ~ 1)
 )
 
-# the column counts (totals by ethnicity) are still weighted results
-# want to change this to raw counts
+# bind the raw and weighted counts by ethn 
+# chis_raw_counts_ethn <- c(
+#   "Ethnicity", 
+#   paste0(chis_tb1_unw$df_by$by_chr, " N=", chis_tb1_unw$df_by$n))
+# chis_wt_counts_ethn <- c(
+#   "Ethnicity", 
+#   paste0(chis_tb1_wt$df_by$by_chr, " N=", chis_tb1_wt$df_by$n))
 
-chis_raw_counts_ethn <- c(
-  "Ethnicity", 
-  paste0(chis_tb1_unw$df_by$by_chr, " N=", chis_tb1_unw$df_by$n))
+chis_counts_ethn <- matrix(
+  c("Unweighted N", chis_tb1_unw$df_by$n, 
+    "Weighted N", chis_tb1_wt$df_by$n), 
+  byrow = TRUE, nrow = 2
+)
 
-chis_combined <- rbind(chis_raw_counts_ethn, as_tibble(chis_combined))
-
+colnames(chis_counts_ethn) <- c("Ethnicity", chis_tb1_unw$df_by$by_chr)
 
 # write.xlsx(
 #   list(
 #     "unweighted CHIS" = as_tibble(chis_tb1_unw),
 #     "weighted CHIS" = as_tibble(chis_tb1_wt),
-#     "combined" = chis_combined
+#     "combined" = as_tibble(chis_combined),
+#     "counts" = chis_counts_ethn
 #   ),
 #   rowNames = TRUE,
-#   file = paste0(path_to_box, path_to_output, "table1s/chis_tbl1.xlsx")
+#   file = paste0(path_to_box, path_to_output, "table1s_without_n/chis_tbl1.xlsx")
 # )
 
 ## overall summary statistics for age ----
@@ -154,10 +163,14 @@ tbl1_pre_MI <- rpgeh_pre_MI %>%
       SR_TOTAL_HEIGHT_M + SR_WEIGHT_KG +
       SR_CHF + SR_STROKE + SR_ANGINA + SR_CANCER1 +
       SR_DEM + SR_DEPRESS
-    | ETHNICITY_REV, overall = NULL, render.continous = my.render.cont)
+    | ETHNICITY_REV, 
+    overall = NULL, 
+    render.continous = my.render.cont, 
+    render.categorical = "PCT"
+    )
 
  
-tbl1_pre_MI_incomepp <- rpgeh_pre_MI %>% t1_relabel_pre_MI() %>% 
+tbl1_pre_MI_incomepp <- rpgeh_pre_MI %>% #  t1_relabel_pre_MI() %>% 
   group_by(ETHNICITY_REV) %>% 
   summarize(mean = mean(INCOME_PP, na.rm = TRUE) %>% round(digits = 0), 
             SD = sd(INCOME_PP, na.rm = TRUE) %>% round(digits = 0), 
@@ -166,7 +179,7 @@ tbl1_pre_MI_incomepp <- rpgeh_pre_MI %>% t1_relabel_pre_MI() %>%
 
 # write.xlsx(list(tbl1_pre_MI, tbl1_pre_MI_incomepp), rowNames = TRUE,
 #            file = paste0(path_to_box, path_to_output,
-#                          "table1s/RPGEH_pre_MI_tbl1.xlsx"))
+#                          "table1s_without_n/RPGEH_pre_MI_tbl1.xlsx"))
 
 ## post-imputation ----
 rpgeh_harm_imp <- rpgeh_harm_imp %>% 
@@ -186,27 +199,29 @@ rpgeh_nomiss <- rpgeh_harm_imp %>% filter(imp == 1) %>%
     ~ H_age + H_female + SURVEY_LANGUAGE + H_work + H_retired + 
       H_diab + H_hyp + 
       MAIN_DEM_V1_FU_TIME + MAIN_DEM_V1_END_TYPE | H_ethn,
-    data = ., overall = NULL, render.continous = my.render.cont
+    data = ., overall = NULL, render.continous = my.render.cont, 
+    render.categorical = "PCT"
   )
 
 # write.xlsx(rpgeh_nomiss, rowNames = TRUE,
-#            file = paste0(path_to_box, path_to_output, 
-#                          "table1s/RPGEH_nomiss_tbl1.xlsx"))
+#            file = paste0(path_to_box, path_to_output,
+#                          "table1s_without_n/RPGEH_nomiss_tbl1.xlsx"))
 
 ### imputed categorical vars ----
 # marit, usborn, usborn_m/f, gen, hhsize_3, edu_4, health_3, smk, alcbinge_monthly
 
 rpgeh_miss_cat <- rpgeh_harm_imp %>% 
   table1(
-    ~ H_marit + H_usborn + H_gen + H_hhsize_3 + H_edu_4 + H_health_3 + H_smk 
+    ~ H_marit + H_usborn + #H_gen 
+      + H_hhsize_3 + H_edu_4 + H_health_3 + H_smk 
     | H_ethn,
     data = ., overall = NULL, 
-    render.categorical = my.render.cat_imp
+    render.categorical = "PCT" # my.render.cat_imp
   )
 
 # write.xlsx(rpgeh_miss_cat, rowNames = TRUE,
 #            file = paste0(path_to_box, path_to_output,
-#                          "table1s/RPGEH_imp_cat_tbl1.xlsx"))
+#                          "table1s_without_n/RPGEH_imp_cat_tbl1.xlsx"))
 
 ### imputed continuous vars ----
 # bmi, income_pp
@@ -219,5 +234,5 @@ rpgeh_miss_cont <- data.frame(rpgeh_miss_cont)
 
 # write.xlsx(rpgeh_miss_cont, rowNames = TRUE,
 #            file = paste0(path_to_box, path_to_output,
-#                          "table1s/RPGEH_imp_cts_tbl1.xlsx"))
+#                          "table1s_without_n/RPGEH_imp_cts_tbl1.xlsx"))
 

@@ -100,7 +100,7 @@ t1_relabel_pre_MI <- function(df) {
     mutate(
       FEMALE = factor(FEMALE, levels = c(1, 0), labels = c("Female", "Male")),
       ETHNICITY_REV = factor(
-        ETHNICITY_REV, levels = c(2,5,3,4,8,1,6,7,9),
+        ETHNICITY_REV, levels = c(2,5,3,4,8,1,6,7,10),
         labels = c("Chinese", "Filipino", "Japanese", "Korean",
                    "Pacific Islander", "South Asian", "Vietnamese",
                    "Other SE Asian", "Multiple Ethnicities")

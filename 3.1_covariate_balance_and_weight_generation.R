@@ -153,7 +153,7 @@ wt_cov_bal <- function(data, ethn, fml = NULL, unweighted = FALSE) {
     # density plots for propensity scores and weights 
     ## for CHIS and the last copy of RPGEH
     plot_data <- ethn_subset %>% filter(imp %in% c(0, 40))
-    ## propensity scores for both studies, weighted by sample weights
+    ## propensity scores for both studies
     plt_ps <- ggplot(plot_data, aes(x = p1, group = in_chis)) +
       geom_density(aes(color = factor(in_chis))) +
       labs(x = "Propensity Score", color = "In CHIS")

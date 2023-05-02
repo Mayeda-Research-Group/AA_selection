@@ -75,7 +75,7 @@ fmls <- c(
   "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_hhsize_3 + H_hyp + H_health_3",
   "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_health_3 + H_hyp",
   "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_health_3 + H_hyp",
-  "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_retired + H_health_3 + H_hyp",
+  "in_rpgeh ~ H_age + H_female + H_edu_4 + H_retired + H_health_3 + H_hyp",
   "in_rpgeh ~ H_age + H_female + H_edu_4 + H_work + H_health_3 + H_bmi + H_hyp",
   "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_smk + H_health_3"
 )
@@ -113,7 +113,7 @@ unw_ncases_ethn <- pys_data_w_ethn %>%
 # write.xlsx(unw_ncases_ethn,
 #            paste0(path_to_box, 
 #                   "Asian_Americans_dementia/Manuscripts/AA_selection/Code/",
-#                   "cleaned_scripts/output/bootstrap_results/", 
+#                   "cleaned_scripts/output/bootstrap_results_strat/", 
 #                   "unweighted_n_cases_x_ethn.xlsx"))
 
 

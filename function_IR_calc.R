@@ -119,8 +119,8 @@ calculate_ir <- function(data, age_cat_labels, std_pop) {
   # these results are later corrected in 4.4_bootstrap_processing.R
   age_spec_ir <- age_spec_ir %>% 
     mutate(
-      unw_adj_ir = unw_cases / unw_pys * pop_prop,
-      wt_adj_ir = wt_cases / wt_pys * pop_prop
+      unw_adj_ir = (unw_cases / unw_pys) * pop_prop,
+      wt_adj_ir = (wt_cases / wt_pys) * pop_prop
       )
   
   # format age-specific IRs output
