@@ -27,5 +27,6 @@ This repo contains R scripts for the paper named Estimating dementia incidence i
 Auxiliary scripts include: 
 
 * `functions_summary.R` contains functions called in `table1.R`. 
-* `function_IR_calc.R` contains helper functions for IR calculation. 
+* `function_IR_calc.R` contains helper functions for IR calculation.
+* `function_AJ.R` contains helper functions for calculating cumulative risk of dementia using the Aalen Johansen estimator.  
 
