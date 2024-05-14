@@ -4,11 +4,11 @@
 if (!require("pacman")) 
   install.packages("pacman", repos='http://cran.us.r-project.org')
 
-p_load("haven", "tidyverse", "mice"
+p_load("haven", "tidyverse", "survey", "openxlsx"
        # rlang"
        # "magrittr", "foreign", "ggplot2", "table1", "labelled"
-       # "survey", "tableone", "openxlsx", "survival", "mgcv", "miceadds"
-       # "openxlsx", "ggpubr", "mitools", "lmtest"
+       # "tableone", "openxlsx", "survival", "mgcv", "miceadds"
+       # "ggpubr", "mitools", "lmtest"
 )
 
 options(scipen = 999, digits = 8)
@@ -34,6 +34,8 @@ chis_2009 <- read_sas(
 # select variables used in harmonization and weight generation
 vars <- c(
   "PUF_ID", "SRAGE_P", "SRSEX", 
+  "INS", "INSTYP_P", # currently insured and insurance type
+  "PROXY",
   "AH33NEW", "AH34NEW", "AH35NEW", # nativity
   "AHEDUC", "WRKST", "AK2", # education, work, retired
   "MARIT2", 
@@ -44,7 +46,7 @@ vars <- c(
   "INTVLANG"
 )
 
-chis_res_2005 <- chis_2005 %>% filter(SRAGE_P >= 60, INS == 1) %>% 
+chis_res_2005 <- chis_2005 %>% filter(SRAGE_P >= 60) %>% 
   mutate(
     H_ethn = case_when(
       SRPI == 1 & ASIAN9 == -1 ~ 8, # PI
@@ -58,12 +60,14 @@ chis_res_2005 <- chis_2005 %>% filter(SRAGE_P >= 60, INS == 1) %>%
       ASIAN9 %in% c(7,8) ~ 7, # Cambodian + Other SE Asian
       ASIAN9 == 9 ~ 9, # multiple
       TRUE ~ 10 # all else
-    )
+    ),
+    Multiracial = (SRAA == 1) + (SRAI == 1) + (SRW == 1) + (SRO == 1),
+    Multiracial = ifelse(Multiracial == 0, 0, 1)
   ) %>% 
   filter(H_ethn != 10) %>% # restrict to Asians only
-  select(H_ethn, all_of(vars))
+  select(H_ethn, Multiracial, all_of(vars))
 
-chis_res_2007 <- chis_2007 %>% filter(SRAGE_P >= 60, INS == 1) %>% 
+chis_res_2007 <- chis_2007 %>% filter(SRAGE_P >= 60) %>% 
   mutate(
     H_ethn = case_when(
       SRPI == 1 & ASIAN9 == -1 ~ 8, # PI
@@ -77,12 +81,14 @@ chis_res_2007 <- chis_2007 %>% filter(SRAGE_P >= 60, INS == 1) %>%
       ASIAN9 %in% c(7,8) ~ 7, # Other SE Asian
       ASIAN9 == 9 ~ 9, # multiple
       TRUE ~ 10 # all else
-    )
+    ),
+    Multiracial = (SRAA == 1) + (SRAI == 1) + (SRW == 1) + (SRO == 1),
+    Multiracial = ifelse(Multiracial == 0, 0, 1)
   ) %>% 
   filter(H_ethn != 10) %>% 
-  select(H_ethn, all_of(vars))
+  select(H_ethn, Multiracial, all_of(vars))
 
-chis_res_2009 <- chis_2009 %>% filter(SRAGE_P >= 60, INS == 1) %>% 
+chis_res_2009 <- chis_2009 %>% filter(SRAGE_P >= 60) %>% 
   mutate(
     H_ethn = case_when(
       SRPI == 1 & ASIAN8 == -1 ~ 8, # PI
@@ -96,10 +102,12 @@ chis_res_2009 <- chis_2009 %>% filter(SRAGE_P >= 60, INS == 1) %>%
       ASIAN8 == 7 ~ 7, # Cambodian + Other SE Asian
       ASIAN8 == 8 ~ 9, # multiple
       TRUE ~ 10 # all else
-    )
+    ),
+    Multiracial = (SRAA == 1) + (SRAI == 1) + (SRW == 1) + (SRO == 1),
+    Multiracial = ifelse(Multiracial == 0, 0, 1)
   ) %>% 
   filter(H_ethn != 10) %>% # restrict to Asians only
-  select(H_ethn, all_of(vars))
+  select(H_ethn, Multiracial, all_of(vars))
 
 # combine datasets ----
 chis_combine <- rbind(chis_res_2005, chis_res_2007, chis_res_2009)
@@ -169,6 +177,12 @@ chis_combine <- chis_combine %>%
       SMOKING == 2 ~ 2, 
       SMOKING == 1 ~ 3
     ), 
+    # insurance type (R1)
+    INSURANCE = case_when(
+      INSTYP_P == 1 ~ "Uninsured",
+      INSTYP_P == 5 ~ "Medicaid",
+      INSTYP_P %in% c(2, 3, 4, 6, 7, 8) ~ "Others"
+    ),
     # adjust weights for pooling 3 years of CHIS
     smplwt = RAKEDW0/3,
     # add study indicators
@@ -178,13 +192,99 @@ chis_combine <- chis_combine %>%
 
 glimpse(chis_combine)
 
-# keep only the harmonized variables 
+## save summary on insurance ----
+library(survey)
+library(gtsummary)
+
+ins_data <- chis_combine %>% 
+  select(H_ethn, INSTYP_P, PROXY, smplwt) %>% 
+  mutate(
+    H_ethn = factor(
+      H_ethn, levels = c(2,5,3,4,8,1,6,7,9),
+      labels = c("Chinese", "Filipino", "Japanese", "Korean",
+                 "Pacific Islander", "South Asian", "Vietnamese",
+                 "Other SE Asian", "Multiple Ethnicities")
+    ),
+    PROXY = ifelse(PROXY == 1, "Yes", "No"), 
+    INSTYP_P = factor(INSTYP_P, levels = c(1:8), 
+                      labels = c("Uninsured", "Medicare & Medicaid", 
+                                 "Medicare & Others", "Medicare Only", 
+                                 "Medicaid", "Employment-based", 
+                                 "Privately Purchased", 
+                                 "Healthy Families/Other Public"))
+  ) %>% 
+  filter(PROXY == "No", INSTYP_P != "Uninsured") %>% 
+  svydesign(~ 1, data = ., weights = ~ smplwt)
+
+tbl_svysummary(
+  data = ins_data, 
+  include = c(INSTYP_P),
+  by = H_ethn, 
+  statistic = list(all_categorical() ~ "{n_unweighted} ({p})")
+)  %>% 
+  modify_header(
+    all_stat_cols() ~ "**{level}**, unweighted N = {n_unweighted}), weighted N = {n}"
+  ) %>% 
+  as_tibble() %>% 
+  write.xlsx(
+    rowNames = TRUE,
+    file = paste0(path_to_box, path_to_proj, 
+                  "Code/cleaned_scripts/output/", 
+                  "table1s_without_n/chis_insurance.xlsx")
+  )
+  
+# prepare final dataset ----
+
+# apply inclusion/exclusion criteria 
 chis_combine <- chis_combine %>% 
-  select(PUF_ID, starts_with("H_"), smplwt, in_chis, in_rpgeh, INTVLANG) %>% 
+  # exclude proxy, with private or medicare insurance (not Medicaid) (R1)
+  filter(PROXY == 2, INS == 1, INSTYP_P != 5)
+
+## survey language summary ----
+chis_combine %>% 
+  filter(H_ethn %in% c(2, 4, 6)) %>% 
+  with(table(H_ethn, INTVLANG, useNA = "ifany")) %>% 
+  prop.table(margin = 1)
+
+## multiracial summary ----
+multiracial_data <- chis_combine %>% 
+  select(H_ethn, Multiracial, smplwt) %>% 
+  mutate(
+    H_ethn = factor(
+      H_ethn, levels = c(2,5,3,4,8,1,6,7,9),
+      labels = c("Chinese", "Filipino", "Japanese", "Korean",
+                 "Pacific Islander", "South Asian", "Vietnamese",
+                 "Other SE Asian", "Multiple Ethnicities")
+    ),
+    Multiracial = as.logical(Multiracial)
+  ) %>% 
+  svydesign(~ 1, data = ., weights = ~ smplwt)
+
+tbl_svysummary(
+  data = multiracial_data, 
+  include = c(Multiracial),
+  by = H_ethn, 
+  statistic = list(all_categorical() ~ "{p}") # weighted p
+) %>% 
+  modify_header(
+    all_stat_cols() ~ "**{level}**, unweighted N = {n_unweighted}), weighted N = {n}"
+  ) %>% 
+  as_tibble() %>% 
+  write.xlsx(
+    rowNames = TRUE,
+    file = paste0(path_to_box, path_to_proj, 
+                  "Code/cleaned_scripts/output/", 
+                  "table1s_without_n/chis_multiracial.xlsx")
+  )
+
+## save the dataset with necessary variables ----
+chis_combine <- chis_combine %>% 
+  select(
+    PUF_ID, starts_with("H_"), smplwt, in_chis, in_rpgeh
+  ) %>% 
   rename(ID = PUF_ID) 
 
-# save ----
-# saveRDS(chis_combine, 
-#         paste0(path_to_box,"Asian_Americans_dementia_data/aa_selection/", 
+# saveRDS(chis_combine,
+#         paste0(path_to_box,"Asian_Americans_dementia_data/aa_selection/",
 #                "chis_2005_to_2009_harmonized.RDS"))
 
