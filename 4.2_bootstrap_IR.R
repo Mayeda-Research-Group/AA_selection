@@ -21,8 +21,8 @@ if (length(args) == 0) {
 # print values just to make sure:
 print(scenario_num)
 
-# also make sure that scenario_num is not greater than 4
-if (scenario_num > 4) {
+# also make sure that scenario_num is not greater than 20
+if (scenario_num > 20) {
   print("out of bound senario number")
   # supply default value
   scenario_num <- 1
@@ -36,10 +36,10 @@ if (scenario_num > 4) {
 
 # set up packages ----
 ## for desktop ----
-# if (!require("pacman")) 
+# if (!require("pacman"))
 #   install.packages("pacman", repos='http://cran.us.r-project.org')
 # 
-# p_load("haven", "tidyverse", "twang", "boot"
+# p_load("haven", "tidyverse", "twang", "boot", "survival", "broom"
 #        # "mice", rlang",
 #        # "magrittr", "foreign", "ggplot2", "table1", "labelled"
 #        # "survey", "tableone", "openxlsx", "survival", "mgcv", "miceadds"
@@ -51,24 +51,30 @@ if (scenario_num > 4) {
 ## for Hoffman ----
 library(tidyverse)
 library(boot)
+library(survival)
+library(broom)
 
 # set up paths and data ----
 
-### when test running on desktop
+# ## when test running on desktop
 # path_to_box <- "~/Library/CloudStorage/Box-Box/"
 # path_to_datasets <- "Asian_Americans_dementia_data/aa_selection/"
 # path_to_output <- "Asian_Americans_dementia/Manuscripts/AA_selection/Code/cleaned_scripts/output/"
-
-# load the prepped data generated in 4.1 and the IR calculation function
+# 
+# ## load the prepped data generated in 4.1 and the IR calculation function
 # load(paste0(path_to_box, path_to_datasets, "bootstrap_prep_data.RData"))
-# source(paste0(path_to_box, 
+# source(paste0(path_to_box,
 #               "Asian_Americans_dementia/Manuscripts/AA_selection/Code/",
 #               "cleaned_scripts/function_IR_calc.R"))
+# source(paste0(path_to_box,
+#               "Asian_Americans_dementia/Manuscripts/AA_selection/Code/",
+#               "cleaned_scripts/function_AJ.R"))
 
 ### when running on Hoffman
 # load the prepped data generated in 4.1 and the IR calculation function
 load("/u/home/y/yixzhou/AA_selection/bootstrap_prep_data.RData")
 source("/u/home/y/yixzhou/AA_selection/function_IR_calc.R")
+source("/u/home/y/yixzhou/AA_selection/function_AJ.R")
 
 # overall description: 
 # take one imputed copy of RPGEH with CHIS
@@ -133,6 +139,12 @@ ir_boot <- function(data, formula, indices) {
     std_pop = c(10805447, 9533545, 8857441, 7415813, 4945367, 4239587) 
   )
   
+  # calculate cumulative risk (AJ estimator) here
+  AJ_out <- estimate_AJ(boot_data)
+  
+  # combine the output
+  out <- c(out, AJ_out)
+  
   return(out)
 }
   
@@ -142,13 +154,16 @@ ethns_list <- names(fmls)
 # i <- 1 # which imputation being worked on, will be an argument
 
 # set up the index of imputations using scenario_num
-# scenario_num <- 4
-imp_start <- (scenario_num - 1) * 10 + 1
-imp_end <- scenario_num * 10
+# scenario_num <- 2
+imp_start <- (scenario_num - 1) * 2 + 1
+imp_end <- scenario_num * 2
 seed <- scenario_num * 1234
 set.seed(seed)
 
 for (i in imp_start:imp_end) {
+  
+  print(i)
+  
   for (ethn in ethns_list) {
     start <- Sys.time() # record starting time
     n_w <- 0 # a counter for glm warnings
@@ -162,11 +177,11 @@ for (i in imp_start:imp_end) {
     res <- boot(
       data = input_data,
       statistic = ir_boot,
-      R = 1100,
+      R = 1200,
       strata = input_data$in_rpgeh, # added on Mar 23 for stratified resampling
       formula = fmls[ethn]
     )
-    
+
     end <- Sys.time() # record ending time
     
     # save bootstrapping results to output
@@ -177,27 +192,28 @@ for (i in imp_start:imp_end) {
     out_df <- cbind(out_df, t = c(0:res$R), imp = i, warning = ww) %>% as_tibble()
     
     write_csv(out_df, 
-              append = i != 1, # only create new file when i = 1
+              # append = i != 1, # only create new file when i = 1
               file = paste0(
-                # desktop path
-                # path_to_box, path_to_output, 
-                # "bootstrap_results/bootstrap_ir_", ethn, ".csv"
-                "/u/home/y/yixzhou/AA_selection/output/", 
-                "bootstrap_ir_", ethn, "_w_warn_index.csv"
+                ## desktop path
+                # path_to_box, path_to_output, "bootstrap_results_strat/bootstraps/",
+                # Hoffman path
+                "/u/home/y/yixzhou/AA_selection/output_R1/",
+                # "bootstrap_ir_", ethn, "_w_warn_index.csv"
+                "bootstrap_ir_imp_", i, "_", ethn, "_w_warn_index.csv"
               ))
     
-    # save the number of warnings and duration of the run for review
-    w_df <- tibble(ethnicity = ethn, n_warns = n_w, imp = i, 
-                   duration = difftime(end, start, units = 'mins'))
-    write_csv(w_df, 
-              # only create new file when it's the first ethnicity and i = 1
-              append = !(ethn == ethns_list[1] & i == 1),
-              file = paste0(
-                # desktop path
-                # path_to_box, path_to_output, 
-                # "bootstrap_results/boostrap_warnings.csv"
-                "/u/home/y/yixzhou/AA_selection/output/", 
-               "bootstrap_warnings_w_warn_index.csv"
-                ))
+    # # save the number of warnings and duration of the run for review
+    # w_df <- tibble(ethnicity = ethn, n_warns = n_w, imp = i, 
+    #                duration = difftime(end, start, units = 'mins'))
+    # write_csv(w_df, 
+    #           # only create new file when it's the first ethnicity and i = 1
+    #           append = !(ethn == ethns_list[1] & i == 1),
+    #           file = paste0(
+    #             # desktop path
+    #             # path_to_box, path_to_output, 
+    #             # "bootstrap_results/boostrap_warnings.csv"
+    #             "/u/home/y/yixzhou/AA_selection/output_R1/", 
+    #             "bootstrap_warnings_w_warn_index.csv"
+    #           ))
   }
 }

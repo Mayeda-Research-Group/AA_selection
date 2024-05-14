@@ -36,7 +36,6 @@ source(paste0(path_to_box,
 
 chis_rpgeh <- chis_harm %>% 
   mutate(imp = 0) %>% 
-  select(-INTVLANG) %>% 
   add_row(rpgeh_harm_imp) %>% 
   t1_relabel()
 
@@ -47,14 +46,23 @@ source(paste0(path_to_box,
               "cleaned_scripts/function_IR_calc.R"))
 
 rpgeh_dem <- rpgeh_tte %>% 
+  mutate(
+    # reformat ID variable into string
+    ID = as.character(SUBJID),
+    # create collapsed endtype variable for AJ estimator
+    endtype = case_when(
+      MAIN_DEM_V1_END_TYPE %in% c("ADMIN CENSORED", "END OF MEMBERSHIP", "CENSORED 90+") ~ 0, # "censored", 
+      MAIN_DEM_V1_END_TYPE == "DEMENTIA" ~ 1, # "dementia",
+      MAIN_DEM_V1_END_TYPE == "DEATH" ~ 2 # "death"
+    ) %>% factor(levels = 0:2, labels = c("censored", "dementia", "death"))
+  ) %>% 
   select( 
     # ID and tte variables
-    SUBJID, SURVEY_AGE, 
-    MAIN_DEM_V1_END_AGE, #MAIN_DEM_V1_END_DEM_AGE, 
-    MAIN_DEM_V1_END_DEM_FLAG) %>% 
-  # reformat ID variable into string
-  mutate(ID = as.character(SUBJID), .before = "SURVEY_AGE") %>% 
-  select(-SUBJID) # drop old ID variable
+    ID, SURVEY_AGE, 
+    MAIN_DEM_V1_END_AGE, 
+    MAIN_DEM_V1_END_DEM_FLAG,
+    endtype
+  )
 
 # calculate person-years and case contribution by age category
 rpgeh_dem_pys <- calculate_pys(
@@ -70,24 +78,30 @@ age_cat_labels <- rpgeh_dem_pys$age_cat_labels # lavels for the age categories
 
 # GLM formulas used for each ethnicity for weight generation ----
 fmls <- c(
-  "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_hhsize_3 + H_health_3 + H_hyp", 
-  "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_hhsize_3 + H_hyp + H_bmi + H_retired + H_health_3", 
-  "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_hhsize_3 + H_hyp + H_health_3",
-  "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_health_3 + H_hyp",
-  "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_health_3 + H_hyp",
-  "in_rpgeh ~ H_age + H_female + H_edu_4 + H_retired + H_health_3 + H_hyp",
-  "in_rpgeh ~ H_age + H_female + H_edu_4 + H_work + H_health_3 + H_bmi + H_hyp",
-  "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_smk + H_health_3"
+  "Chinese" = 
+    "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_hhsize_3 + H_health_3 + H_hyp", 
+  "Filipino" =
+    "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_hhsize_3 + H_hyp + H_bmi + H_retired + H_health_3", 
+  "Japanese" =
+    "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_hhsize_3 + H_hyp + H_health_3",
+  "Korean" =
+    "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_health_3 + H_hyp",
+  "Pacific Islander" =
+    "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_health_3 + H_hyp",
+  "South Asian" =
+    "in_rpgeh ~ H_age + H_female + H_edu_4 + H_retired + H_health_3 + H_hyp",
+  "Vietnamese" =
+    "in_rpgeh ~ H_age + H_female + H_edu_4 + H_work + H_health_3 + H_bmi + H_hyp",
+  "Multiple Ethnicities" = 
+    "in_rpgeh ~ H_age + H_female + H_usborn + H_edu_4 + H_smk + H_health_3"
 )
-
-names(fmls) <- c("Chinese", "Filipino", "Japanese", "Korean", "Pacific Islander",
-                 "South Asian", "Vietnamese", "Multiple Ethnicities")
 
 
 # save the various objects for running on Hoffman ----
-# save(chis_rpgeh, pys_data, age_cat_labels, fmls,
-#      file = paste0(path_to_box, path_to_datasets, "bootstrap_prep_data.RData")
-#      )
+save(
+  chis_rpgeh, pys_data, age_cat_labels, fmls,
+  file = paste0(path_to_box, path_to_datasets, "bootstrap_prep_data.RData")
+)
 
 # preliminary IR calculation ----
 # we can calculate unweighted age-specific pys and case contributions 
@@ -111,9 +125,9 @@ unw_ncases_ethn <- pys_data_w_ethn %>%
   )
 
 # write.xlsx(unw_ncases_ethn,
-#            paste0(path_to_box, 
+#            paste0(path_to_box,
 #                   "Asian_Americans_dementia/Manuscripts/AA_selection/Code/",
-#                   "cleaned_scripts/output/bootstrap_results_strat/", 
+#                   "cleaned_scripts/output/bootstrap_results_strat/",
 #                   "unweighted_n_cases_x_ethn.xlsx"))
 
 
