@@ -204,6 +204,13 @@ my.render.cat_imp <- function(x, value.prefix = "") {
   return(out)
 }
 
+# customized function for rendering logical variables to display only one row
+logical.rndr <- function(x, ...) {
+  y <- render.default(x, ...)
+  if (is.logical(x)) y[2] else y
+}
+
+
 # function to apply Rubin's rule to imputed continuous variables
 
 imp_cts_var_tbl1 <- function(df, cts_vars) {

@@ -114,14 +114,12 @@ calculate_ir <- function(data, age_cat_labels, std_pop) {
     age_spec_ir[i, "wt_cases"] <- sum(data[, "sw1"] * data[, paste0("case_", cat)])
   }
   
-  # this multiplication step is needed to calculate the age-adjusted IR's
-  # but for age-specific rates it should only be cases / pys
-  # these results are later corrected in 4.4_bootstrap_processing.R
+  # age-specific rates should be cases / pys
   age_spec_ir <- age_spec_ir %>% 
     mutate(
-      unw_adj_ir = (unw_cases / unw_pys) * pop_prop,
-      wt_adj_ir = (wt_cases / wt_pys) * pop_prop
-      )
+      unw_adj_ir = unw_cases / unw_pys,
+      wt_adj_ir = wt_cases / wt_pys
+    )
   
   # format age-specific IRs output
   age_spec_ir_out <- c(age_spec_ir$unw_adj_ir, age_spec_ir$wt_adj_ir)
@@ -130,6 +128,10 @@ calculate_ir <- function(data, age_cat_labels, std_pop) {
     age_cat_labels)
   
   ir_out <- age_spec_ir %>% 
+    mutate(
+      unw_adj_ir = unw_adj_ir * pop_prop, 
+      wt_adj_ir = wt_adj_ir * pop_prop
+    ) %>% 
     summarise(across(unw_pys:wt_adj_ir, sum)) %>% 
     mutate(
       # generate crude IR, unweighted and weighted
