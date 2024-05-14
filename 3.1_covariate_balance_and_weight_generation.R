@@ -18,7 +18,6 @@ p_load("haven", "tidyverse", "twang", "RColorBrewer", "mitools", "ggpubr",
 options(scipen = 999, digits = 8)
 
 # set up paths and data ----
-# path_to_box <- "C:/Users/Staff/Box/"
 path_to_box <- "~/Library/CloudStorage/Box-Box/"
 path_to_datasets <- "Asian_Americans_dementia_data/aa_selection/"
 path_to_output <- "Asian_Americans_dementia/Manuscripts/AA_selection/Code/cleaned_scripts/output/"
@@ -36,9 +35,9 @@ source(paste0(path_to_box,
               "Asian_Americans_dementia/Manuscripts/AA_selection/Code/",
               "cleaned_scripts/functions_summary.R"))
 
+# main analysis will be excluding Medicare only subjects (for now)
 chis_rpgeh <- chis_harm %>% 
   mutate(imp = 0) %>% 
-  select(-INTVLANG) %>% 
   add_row(rpgeh_harm_imp) %>% 
   t1_relabel()
 
@@ -545,38 +544,46 @@ sa3_res <- wt_cov_bal(chis_rpgeh, "South Asian", fml3)
 fml4 <- paste0(fml3, " + H_hhsize_3")
 sa4_res <- wt_cov_bal(chis_rpgeh, "South Asian", fml4)
 
-# the final model is fml3
+# when running bootstraps, the small number of usborn South Asians 
+# are causing computation problems -- decided to drop it from the final model
+fml5 <- "in_rpgeh ~ H_age + H_female + H_edu_4 + H_retired + H_health_3 + H_hyp"
+sa5_res <- wt_cov_bal(chis_rpgeh, "South Asian", fml5)
 
 # save the output objects
-# save(sa0_res, sa3_res, 
+# save(sa0_res, sa5_res,
 #      file = paste0(path_to_box, path_to_datasets, "weighted_data/sa_res.RData"))
 
 # save the plots
 # mods <- paste0("South Asian", "\n",
-#                "Level 1: ", 
+#                "Level 1: ",
 #                substring(fml1, 12) %>% str_remove_all("H_"), "\n",
-#                "Level 2: ", 
-#                substring(fml2, 12) %>% str_remove_all("H_") %>% str_wrap(29), "\n", 
-#                "Level 3: ", 
-#                substring(fml3, 12) %>% str_remove_all("H_") %>% str_wrap(29), "\n", 
-#                "Level 4: ", 
-#                substring(fml4, 12) %>% str_remove_all("H_") %>% str_wrap(29))
+#                "Level 2: ",
+#                substring(fml2, 12) %>% str_remove_all("H_") %>% str_wrap(29), "\n",
+#                "Level 3: ",
+#                substring(fml3, 12) %>% str_remove_all("H_") %>% str_wrap(29), "\n",
+#                "Level 4: ",
+#                substring(fml4, 12) %>% str_remove_all("H_") %>% str_wrap(29), "\n",
+#                "Level 5: ",
+#                substring(fml5, 12) %>% str_remove_all("H_") %>% str_wrap(29)
+#                )
 # 
 # ggsave(
-#   plot = ggarrange(sa0_res$cov_bal_plot, 
-#                    sa1_res$cov_bal_plot, 
-#                    sa2_res$cov_bal_plot, 
-#                    sa3_res$cov_bal_plot, 
-#                    sa4_res$cov_bal_plot, 
-#                    ggplot() + theme_void() + 
+#   plot = ggarrange(sa0_res$cov_bal_plot,
+#                    sa1_res$cov_bal_plot,
+#                    sa2_res$cov_bal_plot,
+#                    sa3_res$cov_bal_plot,
+#                    sa4_res$cov_bal_plot,
+#                    sa5_res$cov_bal_plot, 
+#                    ggplot() + theme_void() +
 #                      annotate("text", x = 1, y = 1, label = mods, size = 4),
-#                    sa1_res$ps_wt_plot, 
-#                    sa2_res$ps_wt_plot, 
-#                    sa3_res$ps_wt_plot, 
-#                    sa4_res$ps_wt_plot, 
-#                    nrow = 2, ncol = 5),
+#                    sa1_res$ps_wt_plot,
+#                    sa2_res$ps_wt_plot,
+#                    sa3_res$ps_wt_plot,
+#                    sa4_res$ps_wt_plot,
+#                    sa5_res$ps_wt_plot,
+#                    nrow = 2, ncol = 6),
 #   file = paste0(path_to_box, path_to_output, "figures/cov_bal_sa.png"),
-#   width = 25, height = 8, units = "in", bg = "white"
+#   width = 30, height = 8, units = "in", bg = "white"
 # )
 
 # Vietnamese ----

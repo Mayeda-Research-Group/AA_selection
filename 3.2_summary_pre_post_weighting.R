@@ -100,7 +100,7 @@ wt_cov_bal_data <- tibble(
   "Japanese" = ja3_res$std_eff_sz$mean, 
   "Korean" = ko3.2_res$std_eff_sz$mean, 
   "Pacific Islander" = pi2_res$std_eff_sz$mean, 
-  "South Asian" = sa3_res$std_eff_sz$mean, 
+  "South Asian" = sa5_res$std_eff_sz$mean, 
   "Vietnamese" = vi4_res$std_eff_sz$mean
 ) %>% 
   filter(
@@ -138,18 +138,26 @@ cov_bal_plot <- ggplot() +
   theme(
     # axis.text.y = element_text(size = 7),
     axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(size = 8),
     panel.grid.major.y = element_line(linetype = c("solid", "dashed")),
     # aspect.ratio = 5 / 3
-    aspect.ratio = 9 / 4
+    aspect.ratio = 9 / 5
   ) + 
   facet_wrap( ~ variable, ncol = 4) +
   theme(legend.position = "none")
 
-# ggsave(
-#   plot = cov_bal_plot,
-#   file = paste0(path_to_box, path_to_output, "figures/cov_bal_unw.png"),
-#   width = 8, units = "in"
-# )
+ggsave(
+  plot = cov_bal_plot,
+  file = paste0(path_to_box, path_to_output, "figures/cov_bal_unw.png"),
+  width = 8, units = "in"
+)
+
+# rotate the figure for submission (landscape)
+ggsave(
+  plot = cov_bal_plot,
+  file = paste0(path_to_box, path_to_output, "figures/cov_bal_unw.pdf"),
+  width = 8, height = 6, units = "in"
+)
 
 # summary after weighting ----
 
@@ -212,7 +220,7 @@ ps_stats <- cbind(
   ps_wt_summarize(ja3_res$wt_df, "Japanese", "p1")[, -1], 
   ps_wt_summarize(ko3.2_res$wt_df, "Korean", "p1")[, -1], 
   ps_wt_summarize(pi2_res$wt_df, "Pacific Islander", "p1")[, -1], 
-  ps_wt_summarize(sa3_res$wt_df, "South Asian", "p1")[, -1], 
+  ps_wt_summarize(sa5_res$wt_df, "South Asian", "p1")[, -1], 
   ps_wt_summarize(vi4_res$wt_df, "Vietnamese", "p1")[, -1]
 )
 
@@ -222,7 +230,7 @@ wt_stats <- cbind(
   ps_wt_summarize(ja3_res$wt_df, "Japanese", "sw1"), 
   ps_wt_summarize(ko3.2_res$wt_df, "Korean", "sw1"), 
   ps_wt_summarize(pi2_res$wt_df, "Pacific Islander", "sw1"), 
-  ps_wt_summarize(sa3_res$wt_df, "South Asian", "sw1"), 
+  ps_wt_summarize(sa5_res$wt_df, "South Asian", "sw1"), 
   ps_wt_summarize(vi4_res$wt_df, "Vietnamese", "sw1")
 )
 
@@ -240,7 +248,7 @@ ps_wt <- rbind(
   ja3_res$wt_df %>% filter(imp %in% c(0, 40)), 
   ko3.2_res$wt_df %>% filter(imp %in% c(0, 40)), 
   pi2_res$wt_df %>% filter(imp %in% c(0, 40)), 
-  sa3_res$wt_df %>% filter(imp %in% c(0, 40)), 
+  sa5_res$wt_df %>% filter(imp %in% c(0, 40)), 
   vi4_res$wt_df %>% filter(imp %in% c(0, 40))
 ) %>% 
   mutate(study = ifelse(in_chis == 1, "CHIS", "Kaiser"))
@@ -284,9 +292,9 @@ wt_plot <- ps_wt %>% filter(study == "Kaiser") %>%
   facet_wrap(~ H_ethn, ncol = 2)
 
 # ggsave(
-#   plot = wt_plot, 
+#   plot = wt_plot,
 #   file = paste0(path_to_box, path_to_output, "figures/weights.png"),
-#   width = 6, units = "in"
+#   width = 7, height = 6.5, units = "in"
 # )
 
 
