@@ -36,98 +36,53 @@ source(paste0(path_to_box,
 
 # table 1 for CHIS ----
 # apply format
-chis_harm <- chis_harm %>% 
-  t1_relabel() %>% 
-  # mutate(PUF_ID = substring(ID, 2)) %>% 
-  # pull INTVLANG from full dataset
-  # left_join(., select(chis_full, PUF_ID, INTVLANG), by = "PUF_ID") %>%
-  mutate(INTVLANG = factor(INTVLANG, levels = 1:6, 
-                           labels = c("English", "Spanish", "Vietnamese", 
-                                      "Korean", "Cantonese", "Mandarin")))
-var_label(chis_harm) <- list(INTVLANG = "Interview language")
+chis_harm <- chis_harm %>% t1_relabel()
 
-## unweighted (not used) ----
-chis_tb1_unw <- chis_harm %>% 
-  select(
-    H_age, H_female, H_usborn, # H_gen, 
-    INTVLANG, H_edu_4,
-    H_marit, H_hhsize_3, H_income_pp, H_work, H_retired, 
-    H_health_3, H_bmi, H_diab, H_hyp, H_smk, H_ethn) %>% 
-  tbl_summary(
-    data = ., 
-    by = H_ethn,
-    statistic = list(all_continuous() ~ "{mean} ({sd})",
-                     all_categorical() ~ "{n}"),
-    digits = list(H_age ~ 1, H_bmi ~ 1, H_income_pp ~ 0)
-  )
-
-## weighted (not used) ----
-
+# set up svydesign objects
 svy.d <- chis_harm %>% 
   select(
-    H_age, H_female, H_usborn, # H_gen, 
-    INTVLANG, H_edu_4,
+    H_age, H_female, H_usborn, H_edu_4,
     H_marit, H_hhsize_3, H_income_pp, H_work, H_retired, 
     H_health_3, H_bmi, H_diab, H_hyp, H_smk, H_ethn, smplwt) %>% 
   svydesign(~ 1, data = ., weights = ~ smplwt)
 
-chis_tb1_wt <- tbl_svysummary(
-  data = svy.d, 
-  by = H_ethn, 
-  statistic = list(all_continuous() ~ "{mean} ({sd})", 
-                   all_categorical() ~ "({p})"), 
-  missing_text = "Missing", 
-  digits = list(H_age ~ 1, H_bmi ~ 1, H_income_pp ~ 0, 
-                all_categorical() ~ 1)
-)
-
-# combined table 1 (used) ----
+# combined table 1 ----
 # where for continuous variables, the weighted mean and SD are used
-# and for categorical variables, the raw counts and weighted percentages are used
+# and for categorical variables, the weighted percentages are used
 
 chis_combined <- tbl_svysummary(
   data = svy.d, 
   by = H_ethn, 
   statistic = list(all_continuous() ~ "{mean} ({sd})", 
-                   # all_categorical() ~ "{n_unweighted} ({p})"
-                   all_categorical() ~ "{p}"
-                   ), 
+                   all_categorical() ~ "{p}"), 
   missing_text = "Missing", 
   digits = list(H_age ~ 1, H_bmi ~ 1, H_income_pp ~ 0, 
                 all_categorical() ~ 1)
 )
 
-# bind the raw and weighted counts by ethn 
-# chis_raw_counts_ethn <- c(
-#   "Ethnicity", 
-#   paste0(chis_tb1_unw$df_by$by_chr, " N=", chis_tb1_unw$df_by$n))
-# chis_wt_counts_ethn <- c(
-#   "Ethnicity", 
-#   paste0(chis_tb1_wt$df_by$by_chr, " N=", chis_tb1_wt$df_by$n))
+chis_counts_ethn <- chis_harm %>% 
+  count(H_ethn) %>% 
+  rename(`Unweighted N` = n) %>% 
+  left_join(
+    chis_harm %>% count(H_ethn, wt = smplwt) %>% 
+      mutate(n = round(n)) %>% 
+      rename(`CHIS survey-weighted N` = n), 
+    by = "H_ethn") %>% 
+  t()
 
-chis_counts_ethn <- matrix(
-  c("Unweighted N", chis_tb1_unw$df_by$n, 
-    "Weighted N", chis_tb1_wt$df_by$n), 
-  byrow = TRUE, nrow = 2
+write.xlsx(
+  list(
+    "combined" = as_tibble(chis_combined),
+    "counts" = chis_counts_ethn
+  ),
+  rowNames = TRUE,
+  file = paste0(path_to_box, path_to_output, "table1s_without_n/chis_tbl1.xlsx")
 )
 
-colnames(chis_counts_ethn) <- c("Ethnicity", chis_tb1_unw$df_by$by_chr)
-
-# write.xlsx(
-#   list(
-#     "unweighted CHIS" = as_tibble(chis_tb1_unw),
-#     "weighted CHIS" = as_tibble(chis_tb1_wt),
-#     "combined" = as_tibble(chis_combined),
-#     "counts" = chis_counts_ethn
-#   ),
-#   rowNames = TRUE,
-#   file = paste0(path_to_box, path_to_output, "table1s_without_n/chis_tbl1.xlsx")
-# )
-
 ## overall summary statistics for age ----
-svymean(~H_age, svy.d) # mean = 70.8198
-svyvar(~H_age, svy.d) # var = 54.8144
-sqrt(svyvar(~H_age, svy.d)[1]) # sd = 7.4
+svymean(~H_age, svy.d) # mean = 71.0
+svyvar(~H_age, svy.d) # var = 53.6
+sqrt(svyvar(~H_age, svy.d)[1]) # sd = 7.3
 
 # table 1 for RPGEH ----
 
@@ -140,13 +95,13 @@ rpgeh_pre_MI <- rpgeh_tte %>%
   right_join(rpgeh_pre_MI, by = "SUBJID") %>% 
   t1_relabel_pre_MI()
 
-## overall summary statistics ----
+### overall summary statistics ----
 # survey age in pre-MI dataset is not topcoded
-mean(rpgeh_pre_MI$SURVEY_AGE)
-sd(rpgeh_pre_MI$SURVEY_AGE)
+mean(rpgeh_pre_MI$SURVEY_AGE) # 70.3
+sd(rpgeh_pre_MI$SURVEY_AGE) # 7.1
 
-mean(rpgeh_pre_MI$MAIN_DEM_V1_FU_TIME)
-sd(rpgeh_pre_MI$MAIN_DEM_V1_FU_TIME)
+mean(rpgeh_pre_MI$MAIN_DEM_V1_FU_TIME) # 9.9
+sd(rpgeh_pre_MI$MAIN_DEM_V1_FU_TIME) # 4.6
 
 tbl1_pre_MI <- rpgeh_pre_MI %>%
   table1(
@@ -180,6 +135,45 @@ tbl1_pre_MI_incomepp <- rpgeh_pre_MI %>% #  t1_relabel_pre_MI() %>%
 # write.xlsx(list(tbl1_pre_MI, tbl1_pre_MI_incomepp), rowNames = TRUE,
 #            file = paste0(path_to_box, path_to_output,
 #                          "table1s_without_n/RPGEH_pre_MI_tbl1.xlsx"))
+
+### additional summary on race/ethnicity ----
+race_ethn_data <- rpgeh_tte %>% 
+  select(SUBJID, starts_with("ETHN_")) %>% 
+  right_join(rpgeh_pre_MI, by = "SUBJID") %>% 
+  mutate(
+    Multiracial = case_when(
+      ETHN_WHITE == 0 &   
+        ETHN_AFRICAN_AMERICAN == 0 & 
+        ETHN_AFRICAN == 0 & 
+        ETHN_AFRO_CARIBBEAN == 0 & 
+        ETHN_MEXICAN == 0 & 
+        ETHN_CENTRAL_S_AMERICAN == 0 & 
+        ETHN_PUERO_RICAN == 0 & 
+        ETHN_CUBAN == 0 & 
+        ETHN_LATINO == 0 & 
+        ETHN_MIDDLE_EASTERN == 0 & 
+        ETHN_ASHKENAZI_JEWISH == 0 & 
+        ETHN_OTHER == 0 ~ 0, # "No non-Asian ethnicity", 
+      TRUE ~ 1 # "At last one non-Asian ethnicity"
+    ) %>% 
+      as.logical(),
+    across(starts_with("ETHN_"), as.logical)
+  )
+
+table1(~ Multiracial | ETHNICITY_REV, 
+       data = race_ethn_data, 
+       render = logical.rndr, render.categorical = "PCT") 
+  # write.xlsx(rowNames = TRUE,
+  #            file = paste0(path_to_box, path_to_output,
+  #                          "table1s_without_n/RPGEH_multiracial.xlsx"))
+
+race_ethn_data %>% 
+  filter(ETHNICITY_REV == "Multiple Ethnicities") %>%
+  table1(~ ETHN_SOUTH_ASIAN + ETHN_CHINESE + ETHN_JAPANESE + ETHN_KOREAN + 
+         ETHN_FILIPINO + ETHN_VIETNAMESE + ETHN_ANY_PAC_ISLANDER + 
+         ETHN_OTHER_SE_ASIAN | ETHNICITY_REV, 
+       data = ., overall = FALSE, render = logical.rndr)
+
 
 ## post-imputation ----
 rpgeh_harm_imp <- rpgeh_harm_imp %>% 
